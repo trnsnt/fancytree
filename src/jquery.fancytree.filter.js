@@ -27,6 +27,31 @@ function _escapeRegex(str){
 	return (str + "").replace(/([.?*+\^\$\[\]\\(){}|-])/g, "\\$1");
 }
 
+//Check if the node has a matching parent, and if it is the case set its parents visible.
+function _keepChildrenBehavior(node){
+	//For each leaf of the tree we will check if there is a matching parent
+	//We loop over the parent to find a matching one
+	node.visitParents(function(p){
+		//We found one
+		if(p.match){
+			//We set hide = false to all the parent and itself
+			node.visitParents(function(p2){
+				if(p2.match){
+					//A matching node, we can exit, all its parents are already done
+					return false;
+				}
+				else{
+					p2.hide = false;
+					//Used only to apply a css
+					p2.childSubMatch = true;
+				}
+			}, true);
+			//A matching node, we can exit
+			return false;
+		}
+	});
+}
+
 /* EXT-TABLE: Show/hide all rows that are structural descendants of `parent`. */
 // function setChildRowVisibility(parent, flag) {
 // 	parent.visit(function(node){
@@ -52,7 +77,8 @@ function _escapeRegex(str){
 $.ui.fancytree._FancytreeClass.prototype.applyFilter = function(filter){
 	var match, re,
 		count = 0,
-		leavesOnly = this.options.filter.leavesOnly;
+		leavesOnly = this.options.filter.leavesOnly,
+		keepChildren = this.options.filter.keepChildren;
 
 	// Default to 'match title substring (not case sensitive)'
 	if(typeof filter === "string"){
@@ -75,6 +101,7 @@ $.ui.fancytree._FancytreeClass.prototype.applyFilter = function(filter){
 		node.hide = true;
 		delete node.match;
 		delete node.subMatch;
+		delete node.childSubMatch;
 	});
 	// Adjust node.hide, .match, .subMatch flags
 	this.visit(function(node){
@@ -86,6 +113,11 @@ $.ui.fancytree._FancytreeClass.prototype.applyFilter = function(filter){
 				p.hide = false;
 				p.subMatch = true;
 			});
+		}
+		//We want to keep children
+		//To avoid useless work we do it for leaf node only
+		else if(keepChildren && node.children == null){
+			_keepChildrenBehavior(node);
 		}
 	});
 	// Redraw
@@ -104,6 +136,7 @@ $.ui.fancytree._FancytreeClass.prototype.clearFilter = function(){
 		delete node.hide;
 		delete node.match;
 		delete node.subMatch;
+		delete node.childSubMatch;
 	});
 	this.enableFilter = false;
 	this.$div.removeClass("fancytree-ext-filter fancytree-ext-filter-dimm fancytree-ext-filter-hide");
@@ -120,7 +153,8 @@ $.ui.fancytree.registerExtension({
 	// Default options for this extension.
 	options: {
 		mode: "dimm",
-		leavesOnly: false
+		leavesOnly: false,
+		keepChildren: false
 	},
 	// Override virtual methods for this extension.
 	// `this`       : is this extension object
@@ -150,6 +184,7 @@ $.ui.fancytree.registerExtension({
 		}
 		$span.toggleClass("fancytree-match", !!node.match);
 		$span.toggleClass("fancytree-submatch", !!node.subMatch);
+		$span.toggleClass("fancytree-submatch", !!node.childSubMatch);
 		$span.toggleClass("fancytree-hide", !!node.hide);
 
 		// if(opts.filter.mode === "hide"){
