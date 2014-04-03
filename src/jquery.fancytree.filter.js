@@ -115,8 +115,9 @@ $.ui.fancytree._FancytreeClass.prototype.applyFilter = function(filter){
 			});
 		}
 		//We want to keep children
+		//It is useless when leavesOnly is set to true
 		//To avoid useless work we do it for leaf node only
-		else if(keepChildren && node.children == null){
+		else if(!leavesOnly && keepChildren && node.children == null){
 			_keepChildrenBehavior(node);
 		}
 	});
